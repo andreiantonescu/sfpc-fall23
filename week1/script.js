@@ -1,9 +1,9 @@
 
 let srcLinks
-let audioElNo = 1
+let audioElNo = 50
 let audioElements = []
 let couldFetch = false
-let speed = 500
+let speed = 1000
 let isPlaying = false
 let audioElLoadedNo = 0
 let loadingElem, websiteURL, resultElem
@@ -41,7 +41,6 @@ async function extractSrcLinks() {
                 createAudioElement(i)
             }
             couldFetch = true
-            console.log(audioElements)
         }
     } catch (error) {
         couldFetch = false
@@ -96,10 +95,14 @@ function update() {
 
 function playSegment(audioEl, character) {
     const segmentDuration = audioEl.duration / 26;
-    const charPosition = character.charCodeAt(0) - 'a'.charCodeAt(0);  // 0 for 'a', 1 for 'b', etc.
+    const charPosition = character.toLowerCase().charCodeAt(0) - 'a'.charCodeAt(0);  // 0 for 'a', 1 for 'b', etc.
 
-    const startTime = charPosition * segmentDuration;
+    if (charPosition >= 0 && charPosition <= 25 && Math.random()>0.5) {
+        const startTime = charPosition * segmentDuration
     
-    audioEl.currentTime = startTime;
-    audioEl.play();
+        audioEl.currentTime = startTime
+        audioEl.play()
+    } else {
+        audioEl.pause()
+    }
 }
