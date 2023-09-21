@@ -1,7 +1,44 @@
-/* .myAudio {
-    display:block !important;
-    padding-top:25px;
-    padding-bottom:25px;
-    width:90%;
-    margin:auto;  
-} */
+html, body {margin: 0; height: 100%; overflow: hidden}
+
+.links {
+    font-size: 10em;
+    overflow: visible;
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    white-space: nowrap;
+    z-index: -1;
+    animation: panText 60s infinite alternate;
+}
+
+@keyframes panText {
+    0% {
+        transform: translate(0, -50%)
+    }
+    100% {
+        transform: translate(max(calc(-100% + 200px), -1024px), -50%)
+    }
+}
+
+.controls {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 40px;
+    background-color: #018281;
+    width: 60%;
+}
+
+.background {
+    background-image: url('img/windows-95-clouds-kfioe6hnh3x8zn4z.webp');
+    background-size: cover;
+    height: 100%;
+    width: 100%;
+    z-index: -10;
+    position: relative;
+}
+
+.input {
+    width: 100%;
+}
