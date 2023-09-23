@@ -12,7 +12,7 @@
         <h1>The Source Player</h1>
         <input class="input" type="text" id="websiteURL" placeholder="Enter website URL" />
         <button onclick="extractSrcLinks()">Upload Site</button>
-        <button onclick="play()">Play</button>
+        <button onclick="toggleTransport()" id="transport" style="display: none;">Play</button>
         <p id="loading"><p>
     </div>
     <div class="links" id="result"></div>

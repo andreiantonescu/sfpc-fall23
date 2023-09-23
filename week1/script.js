@@ -1,6 +1,6 @@
 let srcLinks, audioElNo = 10, audioElLoadedNo = 0, audioElements = []
-let couldFetch = false, speed = 2000, isPlaying = false
-let loadingElem, websiteURL, resultElem, seed = 123512
+let couldFetch = false, speed = 2000, isPlaying = false, transportButton
+let loadingElem, websiteURL, resultElem
 
 const files = [
     '/week1/audio/188828__0ktober__modem_dial.wav', 
@@ -52,6 +52,7 @@ async function extractSrcLinks() {
                 createAudioElement()
             }
             couldFetch = true
+            transportButton.style.display = 'block'
         } else {
             throw new Error("Nothing found 😟")
         }
@@ -85,14 +86,30 @@ function removeAudioElements() {
     audioElements = []
 }
 
-function play() {
-    isPlaying = !isPlaying
+function pauseAudioElements() {
+    for(let i=0; i<audioElNo; i++) {
+        if (audioElements[i] != undefined) {
+            audioElements[i].audioEl.pause()
+        }
+    }
+}
+
+function toggleTransport() {
+    if (isPlaying == true) {
+        isPlaying = false
+        pauseAudioElements()
+        transportButton.textContent = "Play"
+    } else {
+        isPlaying = true
+        transportButton.textContent = "Stop"
+    }
 }
 
 window.onload = function() {
     loadingElem = document.getElementById('loading')
     websiteURL = document.getElementById('websiteURL')
     resultElem = document.getElementById('result')
+    transportButton = document.getElementById('transport')
     Math.setSeed(12345678)
     setInterval(update, speed);
   };
@@ -100,16 +117,11 @@ window.onload = function() {
 
 function update() {
     if (couldFetch == false || isPlaying == false) {
-        for(let i=0; i<audioElNo; i++) {
-            if (audioElements[i] != undefined) {
-                audioElements[i].audioEl.pause()
-            }
-        }
+        pauseAudioElements()
         return
     }
     audioElLoadedNo = 0
     for(let i=0; i<audioElNo; i++) {
-        // loadingElem.textContent = audioElLoadedNo/audioElNo * 100 + "% loaded"
         if(audioElements[i].audioEl.readyState != 4) {
             continue
         }
