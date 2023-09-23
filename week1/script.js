@@ -1,6 +1,5 @@
-
-let srcLinks, audioElNo = 50, audioElLoadedNo = 0, audioElements = []
-let couldFetch = false, speed = 1000, isPlaying = false
+let srcLinks, audioElNo = 10, audioElLoadedNo = 0, audioElements = []
+let couldFetch = false, speed = 2000, isPlaying = false
 let loadingElem, websiteURL, resultElem, seed = 123512
 
 const files = [
@@ -8,29 +7,18 @@ const files = [
     '/week1/audio/546450__wtermini__the-sound-of-dial-up-internet.mp3', 
     '/week1/audio/644997__goldenzoomi1__the-microsoft-sound.wav']
 
-S = () => { return (1664525 * seed + 1013904223) % (2 ** 32) / (2 ** 32)}
-
-(function() {
-    // Parameters for a simple linear congruential generator
-    const a = 1664525;
-    const c = 1013904223;
-    const m = 2 ** 32; // modulus: 2^32
-
+function setupDetRand() {
     let seed = 12345678
-
     function lcgRandom() {
-        seed = (a * seed + c) % m;
-        return seed / m;
+        seed = (1664525 * seed + 1013904223) % (2 ** 32)
+        return seed / (2 ** 32)
     }
-
-    // Override Math.random() with the seedable lcgRandom
     Math.random = lcgRandom;
-
-    // Function to set the seed
     Math.setSeed = function(s) {
         seed = s;
-    };
-})()
+    }
+}
+setupDetRand()
 
 async function extractSrcLinks() {
     try {
@@ -44,11 +32,12 @@ async function extractSrcLinks() {
             couldFetch = false
             throw new Error("Ooops, couldn't fetch 🙅🏼")
         }
-
         const htmlContent = await response.text()
 
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlContent, 'text/html')
+
+        removeAudioElements()
 
         const srcTags = doc.querySelectorAll('[src]')
         srcLinks = [...srcTags].map(tag => {
@@ -58,10 +47,9 @@ async function extractSrcLinks() {
         resultElem.innerHTML = srcLinks.map(link => `<a href="${link}">${link}</a>`).join('<br>')
 
         if(srcLinks != undefined && srcLinks.length > 1) {
-            audioElements = []
             Math.setSeed(srcLinks.length * srcTags.length)
             for(let i=0; i<audioElNo; i++) {
-                createAudioElement(i)
+                createAudioElement()
             }
             couldFetch = true
         } else {
@@ -73,10 +61,10 @@ async function extractSrcLinks() {
     }
 }
 
-function createAudioElement(index) {
+function createAudioElement() {
     let audio = document.createElement('audio')
+    console.log()
     audio.src = files[Math.floor(Math.random() * files.length)]
-    // audio.controls = true
     audio.volume = 2.5/audioElNo
     audio.loop = true
     document.body.appendChild(audio)
@@ -85,6 +73,16 @@ function createAudioElement(index) {
         link: srcLinks[Math.floor(Math.random() * (srcLinks.length - 1))],
         currentIndex: 0
     })
+}
+
+function removeAudioElements() {
+    isPlaying = false
+    for(let i=0; i<audioElNo; i++) {
+        if(audioElements.length > 0 && audioElements[i].audioEl != undefined) {
+            audioElements[i].audioEl.remove()
+        }
+    }
+    audioElements = []
 }
 
 function play() {
@@ -101,7 +99,6 @@ window.onload = function() {
 
 
 function update() {
-    console.log("update")
     if (couldFetch == false || isPlaying == false) {
         for(let i=0; i<audioElNo; i++) {
             if (audioElements[i] != undefined) {
@@ -112,6 +109,7 @@ function update() {
     }
     audioElLoadedNo = 0
     for(let i=0; i<audioElNo; i++) {
+        // loadingElem.textContent = audioElLoadedNo/audioElNo * 100 + "% loaded"
         if(audioElements[i].audioEl.readyState != 4) {
             continue
         }
@@ -120,16 +118,15 @@ function update() {
         }
         playSegment(audioElements[i].audioEl, audioElements[i].link[audioElements[i].currentIndex])
         audioElements[i].currentIndex++
-        audioElLoadedNo++;
+        audioElLoadedNo++
     }
-    loadingElem.textContent = audioElLoadedNo/audioElNo * 100 + "% loaded"
 }
 
 function playSegment(audioEl, character) {
     const segmentDuration = audioEl.duration / 26
     const charPosition = character.toLowerCase().charCodeAt(0) - 'a'.charCodeAt(0)
 
-    if (charPosition >= 0 && charPosition <= 25 && Math.random() > 0.5) {
+    if (charPosition >= 0 && charPosition <= 25 && Math.random() > 0.15) {
         const startTime = charPosition * segmentDuration
     
         audioEl.currentTime = startTime
