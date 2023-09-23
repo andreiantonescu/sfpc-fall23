@@ -1,4 +1,8 @@
-html, body {margin: 0; height: 100%; overflow: hidden}
+html, body {
+    margin: 0; 
+    height: 100%; 
+    overflow: hidden;
+    font-family: "MS Sans Serif",Tahoma,Verdana,Segoe,sans-serif;}
 
 .links {
     font-size: 10em;
@@ -16,7 +20,7 @@ html, body {margin: 0; height: 100%; overflow: hidden}
         transform: translate(0, -50%)
     }
     100% {
-        transform: translate(max(calc(-100% + 200px), -1024px), -50%)
+        transform: translate(max(calc(-100% + 200px), -256px), -50%)
     }
 }
 
@@ -25,10 +29,21 @@ html, body {margin: 0; height: 100%; overflow: hidden}
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    padding: 40px;
-    background-color: #018281;
+    background-color: silver;
+    border: solid;
+    border-width: 2px;
+    border-bottom-color: #464343;
+    border-right-color: #464343;
+    border-left-color: #fff;
+    border-top-color: #fff;
     width: 50%;
-    border-radius: 4px;
+}
+
+.controls .header {
+    background: -webkit-linear-gradient(left,#0b2269,#a0caf3);
+    color: #fff;
+    height: 25%;
+    margin-bottom: 40px;
 }
 
 .background {
@@ -40,32 +55,68 @@ html, body {margin: 0; height: 100%; overflow: hidden}
     position: relative;
 }
 
-.input {
-    width: 100%;
+.controls .content {
+    padding: 20px
 }
 
 button {
-    font-size: 1.5em;
-    background-color: white;
+    font-size: 1em;
     font-weight: bold;
+    height: 38px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-width: 2px;
+    border-style: outset;
+    border-right-color: #464343;
+    border-bottom-color: #464343;
+    border-left-color: #fff;
+    border-top-color: #fff;
+    background: silver;
+    color: black;
+    cursor: pointer;
+}
+
+button:hover {
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    border-left-color: #464343;
+    border-top-color: #464343;
+}
+
+button.upload {
+    display: inline-block;
+    vertical-align: middle;
+    width: 25%;
+    float: right;
+}
+
+button.play {
+    width: 100%;
 }
 
 input {
     margin-bottom: 20px;
     font-size: 1em;
-    
+    display: inline-block;
+    width: calc(75% - 30px);
+    margin-right: 20px;
+    height: 30px;
+    border: 2px inset #d5d5d5;
+    color: #464343;
+    background: #fff;
+    vertical-align: middle;
+    padding: 2px;
 }
 
 h1 {
-    /* position: absolute; */
-    font-size: 2.5em;
-    background-color: white;
-    /* top: -75%; */
-    /* left: 50%; */
-    /* transform: translate(-50%, -50%); */
-    text-align: center;
+
+    font-size: 1.5em;
+    font-weight: 400;
+    color: white;
+    text-align: left;
     width: 100%;
-    margin-top: 20px;
+    margin: 0px;
+    padding: 4px 4px 4px 12px;
 }
 
 p {

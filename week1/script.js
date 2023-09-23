@@ -3,9 +3,9 @@ let couldFetch = false, speed = 2000, isPlaying = false, transportButton
 let loadingElem, websiteURL, resultElem
 
 const files = [
-    '/week1/audio/188828__0ktober__modem_dial.wav', 
+    '/week1/audio/188828__0ktober__modem_dial.mp3', 
     '/week1/audio/546450__wtermini__the-sound-of-dial-up-internet.mp3', 
-    '/week1/audio/644997__goldenzoomi1__the-microsoft-sound.wav']
+    '/week1/audio/644997__goldenzoomi1__the-microsoft-sound.mp3']
 
 function setupDetRand() {
     let seed = 12345678
@@ -27,7 +27,6 @@ async function extractSrcLinks() {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-
         if (!response.ok) {
             couldFetch = false
             throw new Error("Ooops, couldn't fetch 🙅🏼")
@@ -39,11 +38,12 @@ async function extractSrcLinks() {
 
         removeAudioElements()
 
-        const srcTags = doc.querySelectorAll('[src]')
+        const srcTags = doc.querySelectorAll('[src], [href]')
         srcLinks = [...srcTags].map(tag => {
-            return tag.getAttribute('src')
+            return tag.getAttribute('src') || tag.getAttribute('href') 
         })
-
+        
+        srcLinks = srcLinks.filter(str => str !== "")
         resultElem.innerHTML = srcLinks.map(link => `<a href="${link}">${link}</a>`).join('<br>')
 
         if(srcLinks != undefined && srcLinks.length > 1) {
@@ -66,7 +66,7 @@ function createAudioElement() {
     let audio = document.createElement('audio')
     console.log()
     audio.src = files[Math.floor(Math.random() * files.length)]
-    audio.volume = 2.5/audioElNo
+    audio.volume = 1.5/audioElNo
     audio.loop = true
     document.body.appendChild(audio)
     audioElements.push({
@@ -137,8 +137,7 @@ function update() {
 function playSegment(audioEl, character) {
     const segmentDuration = audioEl.duration / 26
     const charPosition = character.toLowerCase().charCodeAt(0) - 'a'.charCodeAt(0)
-
-    if (charPosition >= 0 && charPosition <= 25 && Math.random() > 0.15) {
+    if (charPosition >= 0 && charPosition <= 25 && Math.random() > 0.35) {
         const startTime = charPosition * segmentDuration
     
         audioEl.currentTime = startTime

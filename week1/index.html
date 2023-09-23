@@ -5,15 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="style.css" rel="stylesheet">
     <script src="script.js"></script>
-    <title>The Musical Web</title>
+    <title>The Source Player</title>
 </head>
 <body>
     <div class="controls">
-        <h1>The Source Player</h1>
-        <input class="input" type="text" id="websiteURL" placeholder="Enter website URL" />
-        <button onclick="extractSrcLinks()">Upload Site</button>
-        <button onclick="toggleTransport()" id="transport" style="display: none;">Play</button>
-        <p id="loading"><p>
+        <div class="header">
+            <h1>The Source Player 🌐 🔉</h1>
+        </div>
+        <div class="content">
+            <input class="input" type="text" id="websiteURL" placeholder="Enter website URL" />
+            <button class="upload" onclick="extractSrcLinks()">Upload Site</button>
+            <button class="play" onclick="toggleTransport()" id="transport" style="display: none;">Play</button>
+            <p id="loading"><p>
+        </div>
     </div>
     <div class="links" id="result"></div>
     <div class="background"></div>
