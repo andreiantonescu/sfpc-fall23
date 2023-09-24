@@ -46,6 +46,7 @@ async function extractSrcLinks() {
         
         srcLinks = srcLinks.filter(str => str !== "")
         resultElem.innerHTML = srcLinks.map(link => `<a href="${link}">${link}</a>`).join('<br>')
+        resultElem.offsetHeight
 
         if(srcLinks != undefined && srcLinks.length > 1) {
             Math.setSeed(srcLinks.length * srcTags.length)
@@ -68,6 +69,7 @@ function createAudioElement() {
     audio.src = files[Math.floor(Math.random() * files.length)]
     audio.volume = 2.5/audioElNo
     audio.loop = true
+    audio.load()
     document.body.appendChild(audio)
     audioElements.push({
         audioEl: audio,
