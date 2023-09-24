@@ -23,7 +23,9 @@ setupDetRand()
 
 async function extractSrcLinks() {
     try {
-        const response = await fetch(`https://corsproxy.io/?${websiteURL.value}`, {
+        var url = websiteURL.value
+        if (!url.match(/^https?:\/\//i)) { url = 'https://' + url }
+        const response = await fetch(`https://corsproxy.io/?${url}`, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
             }
