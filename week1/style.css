@@ -43,7 +43,9 @@ html, body {
     background: -webkit-linear-gradient(left,#0b2269,#a0caf3);
     color: #fff;
     height: 25%;
-    margin-bottom: 40px;
+    margin-bottom: 20px;
+    height: auto;
+    position: relative;
 }
 
 .background {
@@ -56,12 +58,12 @@ html, body {
 }
 
 .controls .content {
-    padding: 20px
+    padding: 12px
 }
 
 button {
     font-size: 1em;
-    font-weight: bold;
+    font-weight: 400;
     height: 38px;
     padding-left: 8px;
     padding-right: 8px;
@@ -83,29 +85,38 @@ button:hover {
     border-top-color: #464343;
 }
 
-button.upload {
+button.stacked {
     display: inline-block;
     vertical-align: middle;
-    width: 25%;
+    width: 30%;
     float: right;
+    margin-left: 10px;
 }
 
 button.play {
     width: 100%;
 }
 
+button.settings {
+    position: absolute;
+    right: 12px;
+    height: 75%;
+    top: 50%;
+    transform: translate(0, -50%);
+}
+
 input {
     margin-bottom: 20px;
     font-size: 1em;
     display: inline-block;
-    width: calc(75% - 30px);
+    width: calc(70% - 50px);
     margin-right: 20px;
     height: 30px;
     border: 2px inset #d5d5d5;
     color: #464343;
     background: #fff;
     vertical-align: middle;
-    padding: 2px;
+    padding: 2px 2px 2px 10px; 
 }
 
 h1 {

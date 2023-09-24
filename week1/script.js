@@ -1,5 +1,5 @@
-let srcLinks, audioElNo = 10, audioElLoadedNo = 0, audioElements = []
-let couldFetch = false, speed = 2000, isPlaying = false, transportButton
+let srcLinks, audioElNo = 10, audioElements = [], audioCountSet, speedSet
+let couldFetch = false, speed = 3000, isPlaying = false, transportButton
 let loadingElem, websiteURL, resultElem
 
 const files = [
@@ -64,9 +64,8 @@ async function extractSrcLinks() {
 
 function createAudioElement() {
     let audio = document.createElement('audio')
-    console.log()
     audio.src = files[Math.floor(Math.random() * files.length)]
-    audio.volume = 1.5/audioElNo
+    audio.volume = 2.5/audioElNo
     audio.loop = true
     document.body.appendChild(audio)
     audioElements.push({
@@ -101,7 +100,7 @@ function toggleTransport() {
         transportButton.textContent = "Play"
     } else {
         isPlaying = true
-        transportButton.textContent = "Stop"
+        transportButton.textContent = "Loading"
     }
 }
 
@@ -110,9 +109,8 @@ window.onload = function() {
     websiteURL = document.getElementById('websiteURL')
     resultElem = document.getElementById('result')
     transportButton = document.getElementById('transport')
-    Math.setSeed(12345678)
     setInterval(update, speed);
-  };
+};
 
 
 function update() {
@@ -120,7 +118,7 @@ function update() {
         pauseAudioElements()
         return
     }
-    audioElLoadedNo = 0
+    var readyEl = 0
     for(let i=0; i<audioElNo; i++) {
         if(audioElements[i].audioEl.readyState != 4) {
             continue
@@ -130,7 +128,10 @@ function update() {
         }
         playSegment(audioElements[i].audioEl, audioElements[i].link[audioElements[i].currentIndex])
         audioElements[i].currentIndex++
-        audioElLoadedNo++
+        readyEl++
+    }
+    if (readyEl == audioElNo) {
+        transportButton.textContent = "Stop"
     }
 }
 
