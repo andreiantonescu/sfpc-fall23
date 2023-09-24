@@ -3,10 +3,10 @@ let couldFetch = false, speed = 3000, isPlaying = false
 let loadingElem, websiteURL, resultElem, transportButton
 
 const files = [
-    '/audio/188828__0ktober__modem_dial.mp3', 
-    '/audio/546450__wtermini__the-sound-of-dial-up-internet.mp3', 
-    '/audio/644997__goldenzoomi1__the-microsoft-sound.mp3',
-    '/audio/273736__squashy555__computer-startup.mp3']
+    '188828__0ktober__modem_dial.mp3', 
+    '546450__wtermini__the-sound-of-dial-up-internet.mp3', 
+    '644997__goldenzoomi1__the-microsoft-sound.mp3',
+    '273736__squashy555__computer-startup.mp3']
 
 function setupDetRand() {
     let seed = 12345678
