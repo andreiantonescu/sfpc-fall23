@@ -1,0 +1,3 @@
+- avoid audio cuts
+- play multiple audio and video
+- transition audio and video
