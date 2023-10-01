@@ -3,4 +3,37 @@ html, body {
     height: 100%; 
     overflow: hidden;
     touch-action: none;
+    font-family: 'Lora', serif;
+}
+
+.intro {
+    position: absolute;
+    color: white;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width:50%;
+    transition: opacity 3s linear;
+}
+
+.intro .regular {
+    font-size: 1.5em;
+    line-height: 1.5em;
+}
+
+.intro .smaller {
+    font-size: 1em;
+    text-align: center;
+    width: 75%;
+    margin: auto;
+    padding-top: 60px;
+    line-height: 1.25em;
+}
+
+a {
+    color: white;
+}
+
+.intro .hide {
+    opacity: 0;
 }
