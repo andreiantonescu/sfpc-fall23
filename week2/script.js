@@ -85,7 +85,7 @@ async function rnboSetup() {
 }
 
 function setup() {
-  setupAspectRatio()
+  setupAspectRatio(window.innerHeight, window.innerWidth)
 
   createCanvas(w, h, WEBGL)
   noStroke()
@@ -144,8 +144,8 @@ function setup() {
   noLoop()
 }
 
-function setupAspectRatio() {
-  let localAspectRatio = window.innerHeight / window.innerWidth
+function setupAspectRatio(width, height) {
+  let localAspectRatio = height / width
   if(videoAspectRatio > localAspectRatio) {
     w = window.innerWidth
     h = w * 1/videoAspectRatio
@@ -203,9 +203,3 @@ function mousePressed() {
     loop()
     document.getElementById('intro').style.opacity = 0
 }
-
-function windowResized() {
-    resizeCanvas(windowWidth, windowHeight)
-    w = windowWidth
-    h = windowHeight
-  }
