@@ -37,3 +37,15 @@ a {
 .intro .hide {
     opacity: 0;
 }
+
+@media (max-width: 600px) {
+    .intro {
+        width: 85%;
+    }
+    .intro .regular {
+        font-size: 1em;
+    }
+    .intro .smaller {
+        font-size: 0.75em;
+    }
+}

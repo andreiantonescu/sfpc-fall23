@@ -195,11 +195,20 @@ function draw() {
     image(layer1, -w/2, -h/2)
 }
 
+function start() {
+  if (loadedVideo == false || loadedAudio == false) { return }
+  video.volume(0)
+  context.resume()
+  video.loop()
+  loop()
+  document.getElementById('intro').style.opacity = 0
+}
+
 function mousePressed() {
-    if (loadedVideo == false || loadedAudio == false) { return }
-    video.volume(0)
-    context.resume()
-    video.loop()
-    loop()
-    document.getElementById('intro').style.opacity = 0
+  start()
+}
+
+function touchStarted() {
+  start()
+  return false
 }
