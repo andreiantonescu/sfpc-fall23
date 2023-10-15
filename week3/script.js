@@ -2,28 +2,21 @@ let w, h, canvas
 let PD = 1
 
 let context
-let gain, starty, dtime1, dtime2, feedback, wetdry, pbspeed
-
-let increment = true
-let ctrlValue = 0
-let minV = 0
-let maxV = 0.99
-let damp = 2500
-let speedThresh = 0.25
+let gain, note, velocity, attackNote, decayNote, sustainNote, releaseNote, modRatio, modBright, attackMod, decayMod, sustainMod, releaseMod
 
 var dispX1 = 69, dispX1Min = 0, dispX1Max = 150
 var dispY1 = 72, dispY1Min = 0, dispY1Max = 150
 var dispX2 = 68, dispX2Min = 0, dispX2Max = 150
 var dispY2 = 61, dispY2Min = 0, dispY2Max = 150
-var factorX = 5.271, factorXMin = 0.001, factorXMax = 10.0, factorXStep = 0.01
-var factorY = 3.671, factorYMin = 0.001, factorYMax = 10.0, factorYStep = 0.01
+var factorX = 9.271, factorXMin = 0.001, factorXMax = 100.0, factorXStep = 0.01
+var factorY = 25, factorYMin = 0.001, factorYMax = 100.0, factorYStep = 0.01
 
 var prevX, prevY, dAvg = 0, avgIter = 0
 var histories = {}
 const maxHistories = 10
 const MOUSE_ID = "mouse"
-const baseSize = 50
-const baseMult = 4
+const baseSize = 10
+const baseMult = 2
 
 async function rnboSetup() {
   const WAContext = window.AudioContext || window.webkitAudioContext
@@ -32,46 +25,47 @@ async function rnboSetup() {
   const outputNode = context.createGain()
   outputNode.connect(context.destination)
 
-  let response = await fetch("export/playback-fx.export.json");
-  const delayPatcher = await response.json();
+  let response = await fetch("export/FMThing.export.json")
+  const fmPatcher = await response.json()
 
-  const delayDevice = await RNBO.createDevice({ context, patcher: delayPatcher });
-  
-  // Load the exported dependencies.json file
-  let dependencies = await fetch("export/dependencies.json")
-  dependencies = await dependencies.json()
-  dependencies[0].file = 'audio/' + src[srcNo] + '.mp3'
-
-  // Load the dependencies into the device
-  const results = await delayDevice.loadDataBufferDependencies(dependencies)
-  results.forEach(result => {
-      if (result.type === "success") {
-          console.log(`Successfully loaded buffer with id ${result.id}`)
-          loadedAudio = true
-      } else {
-          console.log(`Failed to load buffer with id ${result.id}, ${result.error}`)
-      }
-  });
+  const fmDevice = await RNBO.createDevice({ context, patcher: fmPatcher })
 
   // Connect the devices in series
-  delayDevice.node.connect(outputNode)
+  fmDevice.node.connect(outputNode)
   
   //get parameters
-  gain = delayDevice.parametersById.get("gain")
-  starty = delayDevice.parametersById.get("on-off")
-  dtime1 = delayDevice.parametersById.get("delay-time-1")
-  dtime2 = delayDevice.parametersById.get("delay-time-2")
-  feedback = delayDevice.parametersById.get("feedback")
-  wetdry = delayDevice.parametersById.get("wet-dry")
-  pbspeed = delayDevice.parametersById.get("pb-speed")
+  gain = fmDevice.parametersById.get("gain")
+  note = fmDevice.parametersById.get("note")
+  velocity = fmDevice.parametersById.get("velocity")
+
+  attackNote = fmDevice.parametersById.get("attackNote")
+  decayNote = fmDevice.parametersById.get("decayNote")
+  sustainNote = fmDevice.parametersById.get("sustainNote")
+  releaseNote = fmDevice.parametersById.get("releaseNote")
+
+  modRatio = fmDevice.parametersById.get("modRatio")
+  modBright = fmDevice.parametersById.get("modBright")
+
+  attackMod = fmDevice.parametersById.get("attackMod")
+  decayMod = fmDevice.parametersById.get("decayMod")
+  sustainMod = fmDevice.parametersById.get("sustainMod")
+  releaseMod = fmDevice.parametersById.get("releaseMod")
   
-  gain.value = 1.0
-  feedback.value = 0.0
-  dtime1.value = 25.0
-  dtime2.value = 35.0
-  wetdry.value = 0.0
-  starty.enumValue = "one"
-  pbspeed.value = 1
+  gain.value = 0.5
+  note.value = 60
+
+  attackNote.value = 10
+  decayNote.value = 500
+  sustainNote.value = 1.0
+  releaseNote.value = 2500
+
+  modRatio.value = 5.0
+  modBright.value = 10.0
+
+  attackMod.value = 10
+  decayMod.value = 500
+  sustainMod.value = 1.0
+  releaseMod.value = 2500
 
   context.suspend()
 }
@@ -81,7 +75,6 @@ function setup() {
   h = window.innerHeight
 
   canvas = createCanvas(w, h, WEBGL)
-  // canvas.mouseOver(drawEllipse)
   noStroke()
 
   pixelDensity(1)
@@ -127,16 +120,17 @@ function setup() {
   warp = warpLayer.createShader(vs, warp_FS)
 
   // UI Debug Stuff
-  var gui = createGui('September')
-  gui.addGlobals('dispX1', 'dispY1', 'dispX2', 'dispY2', 'factorX', 'factorY')
+  // var gui = createGui('September')
+  // gui.addGlobals('dispX1', 'dispY1', 'dispX2', 'dispY2', 'factorX', 'factorY')
 
-  // rnboSetup()dfs
-  // noLoop()
   drawLayer.noStroke()
+  drawLayer.background(15, 15, 15)
+
+  rnboSetup()
 }
 
 function draw() {
-  drawLayer.background('red')
+  drawLayer.background(15, 15, 15, 10)
   if(mouseIsPressed) {
     updateAndDraw(mouseX, mouseY, MOUSE_ID)
   }
@@ -160,20 +154,28 @@ function draw() {
   warp.setUniform("pr", PD)
   warp.setUniform("iResolution", [w, h])
   warp.setUniform("img", drawLayer)
-  warp.setUniform("time", frameCount/100)
+  warp.setUniform("time", frameCount/10)
   warp.setUniform("dispX1", dispX1)
   warp.setUniform("dispY1", dispY1)
   warp.setUniform("dispX2", dispX2)
   warp.setUniform("dispY2", dispY2)
-  warp.setUniform("factorX", factorX)
-  warp.setUniform("factorY", factorY)
+  warp.setUniform("factorX", map(mouseY, 0, h, 0, 100))
+  warp.setUniform("factorY", map(mouseY, 0, h, 0, 100))
   warp.setUniform("mouseX", -w/2)
   warp.setUniform("mouseY", -h/2)
 
   warpLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
   image(warpLayer, -w/2, -h/2)
-  // fill('yellow')
-  // ellipse(0, 0, 100)
+}
+
+function mousePressed() {
+  context.resume()
+  note.value = map(mouseX, 0, w, 0, 127)
+  velocity.value = 127
+} 
+
+function mouseReleased() {
+  velocity.value = 0
 }
 
 function updateAndDraw(x, y, id) {
@@ -196,6 +198,10 @@ function updateAndDraw(x, y, id) {
   }
 
   let avgDist = average(histories[id].map(item => item.d))
+
+  note.value = map(x, 0, w, 12, 115)
+  modRatio.value = map(y, 0, h, 0, 32)
+  modBright.value = map(avgDist, 0, w/10, 0, 32)
 
   drawLayer.ellipse(x - w/2 - baseSize/2, y - h/2 - baseSize/2, avgDist * baseMult + baseSize)
 }
