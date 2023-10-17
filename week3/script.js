@@ -1,7 +1,7 @@
 let w, h, canvas
 let PD = 1
 
-let context
+let context, fmDevice
 let gain, note, velocity, attackNote, decayNote, sustainNote, releaseNote, modRatio, modBright, attackMod, decayMod, sustainMod, releaseMod
 
 var dispX1 = 69, dispX1Min = 0, dispX1Max = 150
@@ -18,6 +18,8 @@ const MOUSE_ID = "mouse"
 const baseSize = 10
 const baseMult = 2
 
+let contextRunning = false
+
 async function rnboSetup() {
   const WAContext = window.AudioContext || window.webkitAudioContext
   context = new WAContext()
@@ -28,7 +30,7 @@ async function rnboSetup() {
   let response = await fetch("export/FMThing.export.json")
   const fmPatcher = await response.json()
 
-  const fmDevice = await RNBO.createDevice({ context, patcher: fmPatcher })
+  fmDevice = await RNBO.createDevice({ context, patcher: fmPatcher })
 
   // Connect the devices in series
   fmDevice.node.connect(outputNode)
@@ -52,7 +54,6 @@ async function rnboSetup() {
   releaseMod = fmDevice.parametersById.get("releaseMod")
   
   gain.value = 0.5
-  note.value = 60
 
   attackNote.value = 10
   decayNote.value = 500
@@ -75,6 +76,10 @@ function setup() {
   h = window.innerHeight
 
   canvas = createCanvas(w, h, WEBGL)
+
+  startButton = createButton('Lets GOOOOO');
+  startButton.position(w/2, h/2)
+  startButton.mousePressed(resumeAudio)
   noStroke()
 
   pixelDensity(1)
@@ -131,7 +136,7 @@ function setup() {
 
 function draw() {
   drawLayer.background(15, 15, 15, 10)
-  if(mouseIsPressed) {
+  if(mouseIsPressed && touches.length == 0) {
     updateAndDraw(mouseX, mouseY, MOUSE_ID)
   }
 
@@ -144,8 +149,9 @@ function draw() {
 
   for (let id in histories) {
     // cleanup touches no longer active
-    if (!touches.some(t => t.id === id) && id !== MOUSE_ID) {
-      delete histories[id];
+    if (!touches.some(t => t.id === Number(id)) && id !== MOUSE_ID) {
+      sendNoteOff(id)
+      delete histories[id]
     }
   }
 
@@ -159,8 +165,8 @@ function draw() {
   warp.setUniform("dispY1", dispY1)
   warp.setUniform("dispX2", dispX2)
   warp.setUniform("dispY2", dispY2)
-  warp.setUniform("factorX", map(mouseY, 0, h, 0, 100))
-  warp.setUniform("factorY", map(mouseY, 0, h, 0, 100))
+  warp.setUniform("factorX", map(mouseY, 0, h, 0, 50))
+  warp.setUniform("factorY", map(mouseY, 0, h, 0, 50))
   warp.setUniform("mouseX", -w/2)
   warp.setUniform("mouseY", -h/2)
 
@@ -168,42 +174,66 @@ function draw() {
   image(warpLayer, -w/2, -h/2)
 }
 
-function mousePressed() {
+function resumeAudio() {
   context.resume()
-  note.value = map(mouseX, 0, w, 0, 127)
-  velocity.value = 127
-} 
+  contextRunning = true
+}
 
 function mouseReleased() {
-  velocity.value = 0
+  sendNoteOff(MOUSE_ID)
+  delete histories[MOUSE_ID]
 }
 
 function updateAndDraw(x, y, id) {
+  // if (contextRunning == false) { return }
   let d
-  if (histories[id] && histories[id].length > 0) {
-      let lastPos = histories[id][histories[id].length - 1];
+  if (histories[id] && histories[id].positions.length > 0) {
+      let lastPos = histories[id].positions[histories[id].positions.length - 1];
       d = dist(x, y, lastPos.x, lastPos.y)
   } else {
       d = 0
   }
   
   if (!histories[id]) {
-    histories[id] = []
+    histories[id] = { positions: [], note: null }
+  }
+  if(histories[id].positions.length < 1) {
+    let note = floor(map(x, 0, w, 12, 115))
+    histories[id].note = note
+    let noteOnMessage = [
+      144 + 0,
+      note,
+      100
+    ]
+    let noteOnEvent = new RNBO.MIDIEvent(context.currentTime, 0, noteOnMessage)
+    fmDevice.scheduleEvent(noteOnEvent)
   }
 
-  histories[id].push({ x: x, y: y, d: d })
+  histories[id].positions.push({ x: x, y: y, d: d })
 
-  if (histories[id].length > maxHistories) {
-    histories[id].shift()
+  if (histories[id].positions.length > maxHistories) {
+    histories[id].positions.shift()
   }
 
-  let avgDist = average(histories[id].map(item => item.d))
+  let avgDist = average(histories[id].positions.map(item => item.d))
 
-  note.value = map(x, 0, w, 12, 115)
   modRatio.value = map(y, 0, h, 0, 32)
   modBright.value = map(avgDist, 0, w/10, 0, 32)
 
   drawLayer.ellipse(x - w/2 - baseSize/2, y - h/2 - baseSize/2, avgDist * baseMult + baseSize)
+}
+
+function sendNoteOff(id) {
+  if(histories[id] && histories[id].positions.length > 0) {
+    let note = histories[id].note
+    let noteOffMessage = [
+      128 + 0,
+      note,
+      0
+    ]
+    let noteOffEvent = new RNBO.MIDIEvent(context.currentTime, 0, noteOffMessage)
+    fmDevice.scheduleEvent(noteOffEvent)
+  }
 }
 
 function average(arr) {
