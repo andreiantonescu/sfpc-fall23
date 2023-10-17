@@ -135,7 +135,7 @@ function setup() {
 }
 
 function draw() {
-  drawLayer.background(15, 15, 15, 10)
+  // drawLayer.background(15, 15, 15, 10)
   if(mouseIsPressed && touches.length == 0) {
     updateAndDraw(mouseX, mouseY, MOUSE_ID)
   }
@@ -171,7 +171,7 @@ function draw() {
   warp.setUniform("mouseY", -h/2)
 
   warpLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
-  image(warpLayer, -w/2, -h/2)
+  image(drawLayer, -w/2, -h/2)
 }
 
 function resumeAudio() {
@@ -180,7 +180,9 @@ function resumeAudio() {
 }
 
 function mouseReleased() {
-  sendNoteOff(MOUSE_ID)
+  drawLayer.background(15, 15, 15, 100)
+  testPlayback()
+  // sendNoteOff(MOUSE_ID)
   delete histories[MOUSE_ID]
 }
 
@@ -195,7 +197,7 @@ function updateAndDraw(x, y, id) {
   }
   
   if (!histories[id]) {
-    histories[id] = { positions: [], note: null }
+    histories[id] = { positions: [], fullPositions: [], note: null }
   }
   if(histories[id].positions.length < 1) {
     let note = floor(map(x, 0, w, 12, 115))
@@ -217,12 +219,40 @@ function updateAndDraw(x, y, id) {
 
   let avgDist = average(histories[id].positions.map(item => item.d))
 
+  histories[id].fullPositions.push({ x: x, y: y, d: avgDist, time: millis() })
+
+  // this should be set earlier? when playing the note?
   modRatio.value = map(y, 0, h, 0, 32)
   modBright.value = map(avgDist, 0, w/10, 0, 32)
 
   drawLayer.ellipse(x - w/2 - baseSize/2, y - h/2 - baseSize/2, avgDist * baseMult + baseSize)
 }
 
+function playBackPosition(position, delay) {
+  setTimeout(() => {
+      drawLayer.ellipse(position.x - w/2 - baseSize/2, position.y - h/2 - baseSize/2, position.d * baseMult + baseSize)
+  }, delay)
+}
+
+function testPlayback() {
+  if(histories[MOUSE_ID] && histories[MOUSE_ID].fullPositions.length > 0) {
+      let reversedHistories = [...histories[MOUSE_ID].fullPositions].reverse()
+      let accumulatedDelay = 0
+
+      for(let i = 0; i < reversedHistories.length - 1; i++) {
+          let currentPos = reversedHistories[i]
+          let nextPos = reversedHistories[i + 1]
+          
+          let timeDiff = currentPos.time - nextPos.time; // difference in time between positions
+          
+          playBackPosition(currentPos, accumulatedDelay)
+          accumulatedDelay += timeDiff;
+      }
+
+      // Handle the last position separately (or you can add conditions in the loop)
+      playBackPosition(reversedHistories[reversedHistories.length - 1], accumulatedDelay);
+  }
+}
 function sendNoteOff(id) {
   if(histories[id] && histories[id].positions.length > 0) {
     let note = histories[id].note
