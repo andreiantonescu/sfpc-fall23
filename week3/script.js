@@ -13,12 +13,14 @@ var factorY = 25, factorYMin = 0.001, factorYMax = 100.0, factorYStep = 0.01
 
 var prevX, prevY, dAvg = 0, avgIter = 0
 var histories = {}
-const maxHistories = 10
+const maxHistories = 20
 const MOUSE_ID = "mouse"
 const baseSize = 10
 const baseMult = 2
 
+let allowMousePress = true
 let contextRunning = false
+let mouseWasPressed = false
 
 async function rnboSetup() {
   const WAContext = window.AudioContext || window.webkitAudioContext
@@ -58,7 +60,7 @@ async function rnboSetup() {
   attackNote.value = 10
   decayNote.value = 500
   sustainNote.value = 1.0
-  releaseNote.value = 2500
+  releaseNote.value = 250
 
   modRatio.value = 5.0
   modBright.value = 10.0
@@ -66,7 +68,7 @@ async function rnboSetup() {
   attackMod.value = 10
   decayMod.value = 500
   sustainMod.value = 1.0
-  releaseMod.value = 2500
+  releaseMod.value = 500
 
   context.suspend()
 }
@@ -135,23 +137,24 @@ function setup() {
 }
 
 function draw() {
-  // drawLayer.background(15, 15, 15, 10)
-  if(mouseIsPressed && touches.length == 0) {
+  drawLayer.background(15, 15, 15, 5)
+  if(mouseIsPressed && touches.length == 0 && allowMousePress) {
     updateAndDraw(mouseX, mouseY, MOUSE_ID)
+    mouseWasPressed = true
   }
 
   for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
     let touchID = touch.id
-
     updateAndDraw(touch.x, touch.y, touchID)
   }
 
   for (let id in histories) {
     // cleanup touches no longer active
     if (!touches.some(t => t.id === Number(id)) && id !== MOUSE_ID) {
-      sendNoteOff(id)
-      delete histories[id]
+      if (allowMousePress != false && id !== MOUSE_ID) {
+        endAndStartPlayback(id)
+       }
     }
   }
 
@@ -180,14 +183,14 @@ function resumeAudio() {
 }
 
 function mouseReleased() {
-  drawLayer.background(15, 15, 15, 100)
-  testPlayback()
-  // sendNoteOff(MOUSE_ID)
-  delete histories[MOUSE_ID]
+  if(mouseWasPressed) {
+    endAndStartPlayback(MOUSE_ID)
+    mouseWasPressed = false
+  }
 }
 
 function updateAndDraw(x, y, id) {
-  // if (contextRunning == false) { return }
+  if (contextRunning == false) { return }
   let d
   if (histories[id] && histories[id].positions.length > 0) {
       let lastPos = histories[id].positions[histories[id].positions.length - 1];
@@ -199,18 +202,6 @@ function updateAndDraw(x, y, id) {
   if (!histories[id]) {
     histories[id] = { positions: [], fullPositions: [], note: null }
   }
-  if(histories[id].positions.length < 1) {
-    let note = floor(map(x, 0, w, 12, 115))
-    histories[id].note = note
-    let noteOnMessage = [
-      144 + 0,
-      note,
-      100
-    ]
-    let noteOnEvent = new RNBO.MIDIEvent(context.currentTime, 0, noteOnMessage)
-    fmDevice.scheduleEvent(noteOnEvent)
-  }
-
   histories[id].positions.push({ x: x, y: y, d: d })
 
   if (histories[id].positions.length > maxHistories) {
@@ -218,26 +209,37 @@ function updateAndDraw(x, y, id) {
   }
 
   let avgDist = average(histories[id].positions.map(item => item.d))
-
   histories[id].fullPositions.push({ x: x, y: y, d: avgDist, time: millis() })
 
-  // this should be set earlier? when playing the note?
-  modRatio.value = map(y, 0, h, 0, 32)
-  modBright.value = map(avgDist, 0, w/10, 0, 32)
-
-  drawLayer.ellipse(x - w/2 - baseSize/2, y - h/2 - baseSize/2, avgDist * baseMult + baseSize)
+  updateMod({y: y, avgDist: avgDist})
+  if(histories[id].positions.length <= 1) {
+    let note = floor(map(x, 0, w, 12, 115))
+    histories[id].note = note
+    playNote(note)
+  }
+  drawEllipse({x: x, y: y, avgDist: avgDist})
 }
 
-function playBackPosition(position, delay) {
+function playBackPosition(position, delay, noteOff, id) {
   setTimeout(() => {
-      drawLayer.ellipse(position.x - w/2 - baseSize/2, position.y - h/2 - baseSize/2, position.d * baseMult + baseSize)
+      updateMod({y: position.y, avgDist: position.d})
+      drawEllipse({x: position.x, y: position.y, avgDist: position.d})
+
+      if (noteOff == true) {
+        drawLayer.background(15, 15, 15, 5)
+        sendNoteOff(id)
+        delete histories[id]
+        allowMousePress = true
+      }
   }, delay)
 }
 
-function testPlayback() {
-  if(histories[MOUSE_ID] && histories[MOUSE_ID].fullPositions.length > 0) {
-      let reversedHistories = [...histories[MOUSE_ID].fullPositions].reverse()
+function playback(id) {
+  if(histories[id] && histories[id].fullPositions.length > 0) {
+      let reversedHistories = [...histories[id].fullPositions].reverse()
       let accumulatedDelay = 0
+
+      playNote(histories[id].note)
 
       for(let i = 0; i < reversedHistories.length - 1; i++) {
           let currentPos = reversedHistories[i]
@@ -245,25 +247,59 @@ function testPlayback() {
           
           let timeDiff = currentPos.time - nextPos.time; // difference in time between positions
           
-          playBackPosition(currentPos, accumulatedDelay)
+          playBackPosition(currentPos, accumulatedDelay, noteOff = false)
           accumulatedDelay += timeDiff;
       }
-
-      // Handle the last position separately (or you can add conditions in the loop)
-      playBackPosition(reversedHistories[reversedHistories.length - 1], accumulatedDelay);
+      playBackPosition(reversedHistories[reversedHistories.length - 1], accumulatedDelay, noteOff = true, id = id);
   }
 }
+
 function sendNoteOff(id) {
   if(histories[id] && histories[id].positions.length > 0) {
     let note = histories[id].note
-    let noteOffMessage = [
-      128 + 0,
-      note,
-      0
-    ]
-    let noteOffEvent = new RNBO.MIDIEvent(context.currentTime, 0, noteOffMessage)
-    fmDevice.scheduleEvent(noteOffEvent)
+    stopNote(note)
   }
+}
+
+function playNote(note) {
+  let noteOnMessage = [
+    144 + 0,
+    note,
+    100
+  ]
+  let noteOnEvent = new RNBO.MIDIEvent(context.currentTime, 0, noteOnMessage)
+  fmDevice.scheduleEvent(noteOnEvent)
+  console.log("play ", note)
+}
+
+function stopNote(note) {
+  let noteOffMessage = [
+    128 + 0,
+    note,
+    0
+  ]
+  let noteOffEvent = new RNBO.MIDIEvent(context.currentTime, 0, noteOffMessage)
+  fmDevice.scheduleEvent(noteOffEvent)
+  console.log("stop ", note)
+}
+
+function drawEllipse(pos){
+  // drawLayer.background(15, 15, 15, 5)
+  drawLayer.ellipse(pos.x - w/2 - baseSize/2, pos.y - h/2 - baseSize/2, pos.avgDist * baseMult + baseSize)
+}
+
+function updateMod(pos) {
+  modRatio.value = map(pos.y, 0, h, 1, 32)
+  modBright.value = map(pos.avgDist, 0, w/10, 1, 32)
+}
+
+function endAndStartPlayback(id) {
+  if (allowMousePress == false) { return }
+  sendNoteOff(id)
+  allowMousePress = false
+  setTimeout(() => {
+    playback(id)
+  }, random(1000) + 250)
 }
 
 function average(arr) {
