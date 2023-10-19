@@ -122,6 +122,7 @@ function setup() {
   `
   
   drawLayer = createGraphics(w, h, WEBGL)
+  fadeLayer = createGraphics(w, h, WEBGL)
 
   warpLayer = createGraphics(w, h, WEBGL)
   warp = warpLayer.createShader(vs, warp_FS)
@@ -131,14 +132,18 @@ function setup() {
   // gui.addGlobals('dispX1', 'dispY1', 'dispX2', 'dispY2', 'factorX', 'factorY')
 
   drawLayer.noStroke()
-  drawLayer.background(15, 15, 15)
+  drawLayer.clear()
+  // drawLayer.background(15, 15, 15)
 
   rnboSetup()
 }
 
+let playbackQueue = []
+
 function draw() {
-  drawLayer.background(15, 15, 15, 5)
-  if(mouseIsPressed && touches.length == 0 && allowMousePress) {
+  drawLayer.background('rgba(15,15,15, 0.05)')
+
+  if(mouseIsPressed && touches.length == 0 && allowMousePress && contextRunning) {
     updateAndDraw(mouseX, mouseY, MOUSE_ID)
     mouseWasPressed = true
   }
@@ -158,6 +163,17 @@ function draw() {
     }
   }
 
+  if(playbackQueue.length>0) {
+    let playbackEvent = playbackQueue.shift(); // Get the first event
+    updateMod(playbackEvent.modData);
+    drawEllipse(playbackEvent.ellipseData);
+    if (playbackEvent.noteOff) {
+      sendNoteOff(playbackEvent.id);
+      delete histories[playbackEvent.id];
+      allowMousePress = true;
+    }
+  }
+  
   warpLayer.shader(warp)
   warp.setUniform("r", [w, h])
   warp.setUniform("pr", PD)
@@ -189,7 +205,7 @@ function mouseReleased() {
   }
 }
 
-function updateAndDraw(x, y, id) {
+function updateAndDraw(x, y, id) { 
   if (contextRunning == false) { return }
   let d
   if (histories[id] && histories[id].positions.length > 0) {
@@ -217,20 +233,18 @@ function updateAndDraw(x, y, id) {
     histories[id].note = note
     playNote(note)
   }
+
   drawEllipse({x: x, y: y, avgDist: avgDist})
 }
 
 function playBackPosition(position, delay, noteOff, id) {
   setTimeout(() => {
-      updateMod({y: position.y, avgDist: position.d})
-      drawEllipse({x: position.x, y: position.y, avgDist: position.d})
-
-      if (noteOff == true) {
-        drawLayer.background(15, 15, 15, 5)
-        sendNoteOff(id)
-        delete histories[id]
-        allowMousePress = true
-      }
+      playbackQueue.push({
+        modData: {y: position.y, avgDist: position.d},
+        ellipseData: {x: position.x, y: position.y, avgDist: position.d},
+        noteOff: noteOff,
+        id: id
+      });
   }, delay)
 }
 
@@ -284,7 +298,6 @@ function stopNote(note) {
 }
 
 function drawEllipse(pos){
-  // drawLayer.background(15, 15, 15, 5)
   drawLayer.ellipse(pos.x - w/2 - baseSize/2, pos.y - h/2 - baseSize/2, pos.avgDist * baseMult + baseSize)
 }
 
