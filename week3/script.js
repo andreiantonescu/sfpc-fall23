@@ -22,6 +22,8 @@ let allowMousePress = true
 let contextRunning = false
 let mouseWasPressed = false
 
+let touchIDInPlayback = {}
+
 async function rnboSetup() {
   const WAContext = window.AudioContext || window.webkitAudioContext
   context = new WAContext()
@@ -142,8 +144,8 @@ let playbackQueue = []
 
 function draw() {
   drawLayer.background('rgba(15,15,15, 0.05)')
-
   if(mouseIsPressed && touches.length == 0 && allowMousePress && contextRunning) {
+    touchIDInPlayback[MOUSE_ID] = false
     updateAndDraw(mouseX, mouseY, MOUSE_ID)
     mouseWasPressed = true
   }
@@ -151,26 +153,31 @@ function draw() {
   for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
     let touchID = touch.id
+    touchIDInPlayback[touch.id] = false
     updateAndDraw(touch.x, touch.y, touchID)
   }
 
   for (let id in histories) {
     // cleanup touches no longer active
     if (!touches.some(t => t.id === Number(id)) && id !== MOUSE_ID) {
-      if (allowMousePress != false && id !== MOUSE_ID) {
+      if (touchIDInPlayback[id] == false && id !== MOUSE_ID) {
         endAndStartPlayback(id)
        }
     }
   }
 
-  if(playbackQueue.length>0) {
-    let playbackEvent = playbackQueue.shift(); // Get the first event
-    updateMod(playbackEvent.modData);
-    drawEllipse(playbackEvent.ellipseData);
-    if (playbackEvent.noteOff) {
-      sendNoteOff(playbackEvent.id);
-      delete histories[playbackEvent.id];
-      allowMousePress = true;
+  if(playbackQueue.length > 0) {
+    const activePlaybackCount = Object.values(touchIDInPlayback).filter(val => val === true).length 
+    for(let i = 0; i < activePlaybackCount && playbackQueue.length > 0; i++) {
+      let playbackEvent = playbackQueue.shift()
+      updateMod(playbackEvent.modData)
+      drawEllipse(playbackEvent.ellipseData)
+      if (playbackEvent.noteOff) {
+        sendNoteOff(playbackEvent.id)
+        delete histories[playbackEvent.id]
+        delete touchIDInPlayback[playbackEvent.id]
+        allowMousePress = true
+      }
     }
   }
   
@@ -190,7 +197,7 @@ function draw() {
   warp.setUniform("mouseY", -h/2)
 
   warpLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
-  image(drawLayer, -w/2, -h/2)
+  image(warpLayer, -w/2, -h/2)
 }
 
 function resumeAudio() {
@@ -244,7 +251,7 @@ function playBackPosition(position, delay, noteOff, id) {
         ellipseData: {x: position.x, y: position.y, avgDist: position.d},
         noteOff: noteOff,
         id: id
-      });
+      })
   }, delay)
 }
 
@@ -264,7 +271,7 @@ function playback(id) {
           playBackPosition(currentPos, accumulatedDelay, noteOff = false)
           accumulatedDelay += timeDiff;
       }
-      playBackPosition(reversedHistories[reversedHistories.length - 1], accumulatedDelay, noteOff = true, id = id);
+      playBackPosition(reversedHistories[reversedHistories.length - 1], accumulatedDelay, noteOff = true, id = id) //last
   }
 }
 
@@ -283,7 +290,7 @@ function playNote(note) {
   ]
   let noteOnEvent = new RNBO.MIDIEvent(context.currentTime, 0, noteOnMessage)
   fmDevice.scheduleEvent(noteOnEvent)
-  console.log("play ", note)
+  // console.log("play ", note)
 }
 
 function stopNote(note) {
@@ -294,7 +301,7 @@ function stopNote(note) {
   ]
   let noteOffEvent = new RNBO.MIDIEvent(context.currentTime, 0, noteOffMessage)
   fmDevice.scheduleEvent(noteOffEvent)
-  console.log("stop ", note)
+  // console.log("stop ", note)
 }
 
 function drawEllipse(pos){
@@ -306,13 +313,13 @@ function updateMod(pos) {
   modBright.value = map(pos.avgDist, 0, w/10, 1, 32)
 }
 
-function endAndStartPlayback(id) {
-  if (allowMousePress == false) { return }
+async function endAndStartPlayback(id) {
+  touchIDInPlayback[id] = true
   sendNoteOff(id)
   allowMousePress = false
   setTimeout(() => {
     playback(id)
-  }, random(1000) + 250)
+  }, random(1000))
 }
 
 function average(arr) {
