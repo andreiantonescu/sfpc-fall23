@@ -1,0 +1,2 @@
+- playback at the same time
+- DONE: draw with fade for both initial and rewind
