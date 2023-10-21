@@ -23,6 +23,8 @@ let contextRunning = false
 let mouseWasPressed = false
 
 let touchIDInPlayback = {}
+let mouseID = 0
+let mouseIDArray = []
 
 async function rnboSetup() {
   const WAContext = window.AudioContext || window.webkitAudioContext
@@ -131,7 +133,7 @@ function setup() {
 
   // UI Debug Stuff
   // var gui = createGui('September')
-  // gui.addGlobals('dispX1', 'dispY1', 'dispX2', 'dispY2', 'factorX', 'factorY')
+  // gui.addGlobals('dispX1', 'dispY1', 'dispX2', 'dispY  2', 'factorX', 'factorY')
 
   drawLayer.noStroke()
   drawLayer.clear()
@@ -144,9 +146,9 @@ let playbackQueue = []
 
 function draw() {
   drawLayer.background('rgba(15,15,15, 0.05)')
-  if(mouseIsPressed && touches.length == 0 && allowMousePress && contextRunning) {
-    touchIDInPlayback[MOUSE_ID] = false
-    updateAndDraw(mouseX, mouseY, MOUSE_ID)
+  if(mouseIsPressed && touches.length == 0 && contextRunning) {
+    touchIDInPlayback[mouseID] = false
+    updateAndDraw(mouseX, mouseY, mouseID)
     mouseWasPressed = true
   }
 
@@ -159,8 +161,8 @@ function draw() {
 
   for (let id in histories) {
     // cleanup touches no longer active
-    if (!touches.some(t => t.id === Number(id)) && id !== MOUSE_ID) {
-      if (touchIDInPlayback[id] == false && id !== MOUSE_ID) {
+    if (!touches.some(t => t.id === Number(id)) && !mouseIDArray.includes(Number(id))) {
+      if (touchIDInPlayback[id] == false && !mouseIDArray.includes(Number(id))) {
         endAndStartPlayback(id)
        }
     }
@@ -205,11 +207,16 @@ function resumeAudio() {
   contextRunning = true
 }
 
+function mousePressed() {
+  mouseID++
+  mouseIDArray.push(mouseID)
+}
+
 function mouseReleased() {
-  if(mouseWasPressed) {
-    endAndStartPlayback(MOUSE_ID)
-    mouseWasPressed = false
-  }
+  // if(mouseWasPressed) {
+    endAndStartPlayback(mouseID)
+    // mouseWasPressed = false
+  // }
 }
 
 function updateAndDraw(x, y, id) { 
