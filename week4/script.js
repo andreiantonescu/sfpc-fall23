@@ -24,7 +24,10 @@ let mouseWasPressed = false
 
 let touchIDInPlayback = {}
 let mouseID = 0
-let mouseIDArray = []
+let mouseIDArray = [], colorsPerTouch = []
+
+const colors = {mono: ["#151F47", "#2C4194", "#5370C0", "#9D92CC", "#5A9F82", "#C67BD0", "#B5E8C9"]}
+let backgroundColor
 
 async function rnboSetup() {
   const WAContext = window.AudioContext || window.webkitAudioContext
@@ -109,18 +112,82 @@ function setup() {
   }
   `
 
-  warp_FS = use + gslsFunctions +
+  bloom_FS = use + gslsFunctions +
   `
   uniform vec2 r;
   uniform sampler2D img;
-  uniform float pr, dispX1, dispY1, dispX2, dispY2, constX, constY, factorX, factorY, time, mouseX, mouseY;
+  uniform float pr;
 
   void main() {
       vec2 uv = (gl_FragCoord.xy/r.xy)/pr;
       uv.y = 1.0 - uv.y;
 
-      float d = distance(uv, vec2(mouseX, mouseY));
-      gl_FragColor = texture2D(img, sineWave(uv, dispX1, dispY1, dispX2, dispY2, constX, constY, factorX/d, factorY/d, time));
+      vec4 fragColor = texture2D(img, uv);
+      float brightness = dot(fragColor.xyz, vec3(0.2126, 0.7152, 0.0722));
+
+      if(brightness > 0.6) {
+          gl_FragColor = texture2D(img, uv);
+      } else {
+          gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+      }
+  }
+  `
+
+  additiveBlend_FS = use + gslsFunctions +
+  `
+  uniform vec2 r;
+  uniform sampler2D img1, img2;
+  uniform float pr;
+
+  void main() {
+      vec2 uv = (gl_FragCoord.xy/r.xy)/pr;
+      uv.y = 1.0 - uv.y;
+
+      const float factor = 3.0;
+
+      vec3 img1Col = texture2D(img1, uv).rgb;
+      vec3 img2Col = texture2D(img2, uv).rgb;
+
+      vec3 result = img1Col + img2Col/factor;
+
+      gl_FragColor = vec4(result, 1.0);
+  }
+  `
+
+  blur_FS = use + gslsFunctions +
+  `
+  uniform vec2 r;
+  uniform sampler2D img;
+  uniform float pr, dispX1, dispY1, dispX2, dispY2, constX, constY, factorX, factorY, time, mouseX, mouseY;
+  uniform bool isBloom;
+
+  void main() {
+      vec2 uv = (gl_FragCoord.xy/r.xy)/pr;
+      uv.y = 1.0 - uv.y;
+
+      // float d = distance(uv, vec2(mouseX, mouseY));
+      // gl_FragColor = texture2D(img, sineWave(uv, dispX1, dispY1, dispX2, dispY2, constX, constY, factorX/d, factorY/d, time));
+    // gl_FragColor = texture2D(img, uv);
+
+    const float Directions = 32.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
+    const float Quality = 16.0; // BLUR QUALITY (Default 4.0 - More is better but slower)
+    const float Size = 16.0; // BLUR SIZE (Radius)
+
+    vec2 Radius = Size/r.xy;
+    vec4 Color = texture2D(img, uv);
+
+    const float Pi = 6.28318530718;
+
+
+    for(float d=0.0; d<6.28318530718; d+=Pi/Directions) {
+        for(float i=1.0/Quality; i<=1.0; i+=1.0/Quality) {
+            Color += texture2D(img, uv+vec2(cos(d),sin(d))*Radius*i * (2.0 + 0.025));		
+        }
+    }
+
+    Color /= Quality * Directions - 15.0;
+    vec4 OriginalColor = texture2D(img, uv);
+    gl_FragColor = Color;
     // gl_FragColor = texture2D(img, uv);
   }
   `
@@ -128,8 +195,17 @@ function setup() {
   drawLayer = createGraphics(w, h, WEBGL)
   fadeLayer = createGraphics(w, h, WEBGL)
 
-  warpLayer = createGraphics(w, h, WEBGL)
-  warp = warpLayer.createShader(vs, warp_FS)
+  blurLayer = createGraphics(w, h, WEBGL)
+  blur = blurLayer.createShader(vs, blur_FS)
+
+  bloomLayer = createGraphics(w, h, WEBGL)
+  bloom = bloomLayer.createShader(vs, bloom_FS)
+
+  blurLayer2 = createGraphics(w, h, WEBGL)
+  blur2 = blurLayer2.createShader(vs, blur_FS)
+
+  finalLayer = createGraphics(w, h, WEBGL)
+  blends = finalLayer.createShader(vs, additiveBlend_FS)
 
   // UI Debug Stuff
   // var gui = createGui('September')
@@ -140,15 +216,18 @@ function setup() {
   // drawLayer.background(15, 15, 15)
 
   rnboSetup()
+  backgroundColor = getRandomRGBA(colors.mono, 255)
+  drawLayer.background(backgroundColor)
 }
 
 let playbackQueue = []
 
 function draw() {
-  drawLayer.background('rgba(15,15,15, 0.05)')
+  // drawLayer.background(backgroundColor)
   if(mouseIsPressed && touches.length == 0 && contextRunning) {
     touchIDInPlayback[mouseID] = false
-    updateAndDraw(mouseX, mouseY, mouseID)
+    if(!colorsPerTouch[mouseID]) { colorsPerTouch[mouseID] = getRandomRGBA(colors.mono, 125)}
+    updateAndDraw(mouseX, mouseY, mouseID, colorsPerTouch[mouseID])
     mouseWasPressed = true
   }
 
@@ -173,7 +252,7 @@ function draw() {
     for(let i = 0; i < activePlaybackCount && playbackQueue.length > 0; i++) {
       let playbackEvent = playbackQueue.shift()
       updateMod(playbackEvent.modData)
-      drawEllipse(playbackEvent.ellipseData)
+      drawEllipse({x: playbackEvent.ellipseData.x, y: playbackEvent.ellipseData.y, avgDist: playbackEvent.ellipseData.avgDist, color: playbackEvent.color})
       if (playbackEvent.noteOff) {
         sendNoteOff(playbackEvent.id)
         delete histories[playbackEvent.id]
@@ -183,23 +262,47 @@ function draw() {
     }
   }
   
-  warpLayer.shader(warp)
-  warp.setUniform("r", [w, h])
-  warp.setUniform("pr", PD)
-  warp.setUniform("iResolution", [w, h])
-  warp.setUniform("img", drawLayer)
-  warp.setUniform("time", frameCount/10)
-  warp.setUniform("dispX1", dispX1)
-  warp.setUniform("dispY1", dispY1)
-  warp.setUniform("dispX2", dispX2)
-  warp.setUniform("dispY2", dispY2)
-  warp.setUniform("factorX", map(mouseY, 0, h, 0, 50))
-  warp.setUniform("factorY", map(mouseY, 0, h, 0, 50))
-  warp.setUniform("mouseX", -w/2)
-  warp.setUniform("mouseY", -h/2)
+  blurLayer.shader(blur)
+  blur.setUniform("r", [w, h])
+  blur.setUniform("pr", PD)
+  blur.setUniform("iResolution", [w, h])
+  blur.setUniform("img", drawLayer)
+  blur.setUniform("time", frameCount/10)
+  blur.setUniform("dispX1", dispX1)
+  blur.setUniform("dispY1", dispY1)
+  blur.setUniform("dispX2", dispX2)
+  blur.setUniform("dispY2", dispY2)
+  blur.setUniform("factorX", map(mouseY, 0, h, 0, 50))
+  blur.setUniform("factorY", map(mouseY, 0, h, 0, 50))
+  blur.setUniform("mouseX", -w/2)
+  blur.setUniform("mouseY", -h/2)
+  blurLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
 
-  warpLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
-  image(warpLayer, -w/2, -h/2)
+  // bloomLayer.shader(bloom)
+  // bloom.setUniform("r", [w, h])
+  // bloom.setUniform("pr", PD)
+  // bloom.setUniform("iResolution", [w, h])
+  // bloom.setUniform("img", blurLayer)
+  // bloomLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
+
+  // blurLayer2.shader(blur2)
+  // blur2.setUniform("r", [w, h])
+  // blur2.setUniform("pr", PD)
+  // blur2.setUniform("iResolution", [w, h])
+  // blur2.setUniform("img", bloomLayer)
+  // blur2.setUniform("isBloom", true)
+  // blurLayer2.quad(-1, -1, 1, -1, 1, 1, -1, 1)
+
+  // finalLayer.shader(blends)
+  // blends.setUniform("r", [w, h])
+  // blends.setUniform("pr", PD)
+  // blends.setUniform("iResolution", [w, h])
+  // blends.setUniform("img1", blurLayer)
+  // blends.setUniform("img2", bloomLayer)
+  // finalLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
+
+  image(blurLayer, -w/2, -h/2)
+  // console.log(floor(frameRate()))
 }
 
 function resumeAudio() {
@@ -219,7 +322,7 @@ function mouseReleased() {
   // }
 }
 
-function updateAndDraw(x, y, id) { 
+function updateAndDraw(x, y, id, color) { 
   if (contextRunning == false) { return }
   let d
   if (histories[id] && histories[id].positions.length > 0) {
@@ -239,7 +342,7 @@ function updateAndDraw(x, y, id) {
   }
 
   let avgDist = average(histories[id].positions.map(item => item.d))
-  histories[id].fullPositions.push({ x: x, y: y, d: avgDist, time: millis() })
+  histories[id].fullPositions.push({ x: x, y: y, d: avgDist, time: millis(), color: color})
 
   updateMod({y: y, avgDist: avgDist})
   if(histories[id].positions.length <= 1) {
@@ -248,16 +351,18 @@ function updateAndDraw(x, y, id) {
     playNote(note)
   }
 
-  drawEllipse({x: x, y: y, avgDist: avgDist})
+  drawEllipse({x: x, y: y, avgDist: avgDist, color: color})
 }
 
 function playBackPosition(position, delay, noteOff, id) {
+  // if(random()>0.5 && !id) { return }
   setTimeout(() => {
       playbackQueue.push({
         modData: {y: position.y, avgDist: position.d},
         ellipseData: {x: position.x, y: position.y, avgDist: position.d},
         noteOff: noteOff,
-        id: id
+        id: id,
+        color: position.color
       })
   }, delay)
 }
@@ -311,7 +416,8 @@ function stopNote(note) {
   // console.log("stop ", note)
 }
 
-function drawEllipse(pos){
+function drawEllipse(pos, color) {
+  drawLayer.fill(pos.color)
   drawLayer.ellipse(pos.x - w/2 - baseSize/2, pos.y - h/2 - baseSize/2, pos.avgDist * baseMult + baseSize)
 }
 
@@ -332,4 +438,15 @@ async function endAndStartPlayback(id) {
 function average(arr) {
   let sum = arr.reduce((acc, val) => acc + val, 0)
   return sum / arr.length
+}
+
+function getRandomRGBA(colorArray, opacity = 255) {
+  let randomHexColor = random(colorArray)
+
+  let col = color(randomHexColor)
+  let r = red(col)
+  let g = green(col)
+  let b = blue(col)
+
+  return color(r, g, b, opacity)
 }
