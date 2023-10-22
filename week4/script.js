@@ -57,7 +57,7 @@ async function rnboSetup() {
   sustainMod = fmDevice.parametersById.get("sustainMod")
   releaseMod = fmDevice.parametersById.get("releaseMod")
   
-  gain.value = 0.5
+  gain.value = 0.35
 
   attackNote.value = 10
   decayNote.value = 500
