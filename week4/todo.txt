@@ -1,3 +1,1 @@
-- have a focal point
 - have something in the sound controlled by the focal point
-- have focal point randomly change

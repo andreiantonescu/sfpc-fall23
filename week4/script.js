@@ -80,10 +80,6 @@ function setup() {
   h = window.innerHeight
 
   canvas = createCanvas(w, h, WEBGL)
-
-  startButton = createButton('Lets GOOOOO');
-  startButton.position(w/2, h/2)
-  startButton.mousePressed(resumeAudio)
   noStroke()
 
   pixelDensity(1)
@@ -171,9 +167,9 @@ function setup() {
     float testV = lv(dToFPoint, 0.0, 0.85, 0.9);
     float brMask = CL(testV);
 
-    const float Directions = 32.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
-    const float Quality = 16.0; // BLUR QUALITY (Default 4.0 - More is better but slower)
-    const float Size = 16.0; // BLUR SIZE (Radius)
+    const float Directions = 12.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
+    const float Quality = 6.0; // BLUR QUALITY (Default 4.0 - More is better but slower)
+    const float Size = 8.0; // BLUR SIZE (Radius)
 
     vec2 Radius = Size/r.xy;
     vec4 Color = texture2D(img, uv);
@@ -205,15 +201,15 @@ function setup() {
   backgroundColor = getRandomRGBA(colors.mono, 255)
   drawLayer.background(backgroundColor)
   
+  noLoop()
 }
 
 let playbackQueue = []
 
 function draw() {
-  // drawLayer.background(backgroundColor)
   if(mouseIsPressed && touches.length == 0 && contextRunning) {
     touchIDInPlayback[mouseID] = false
-    if(!colorsPerTouch[mouseID]) { colorsPerTouch[mouseID] = getRandomRGBA(colors.mono, 125)}
+    if(!colorsPerTouch[mouseID]) { colorsPerTouch[mouseID] = getRandomRGBA(colors.mono, 75)}
     updateAndDraw(mouseX, mouseY, mouseID, colorsPerTouch[mouseID])
     mouseWasPressed = true
   }
@@ -263,8 +259,10 @@ function draw() {
 }
 
 function resumeAudio() {
+  document.getElementById('start').style.opacity = 0
   context.resume()
   contextRunning = true
+  loop()
 }
 
 function mousePressed() {
@@ -273,10 +271,7 @@ function mousePressed() {
 }
 
 function mouseReleased() {
-  // if(mouseWasPressed) {
     endAndStartPlayback(mouseID)
-    // mouseWasPressed = false
-  // }
 }
 
 function updateAndDraw(x, y, id, color) { 
@@ -375,7 +370,14 @@ function stopNote(note) {
 
 function drawEllipse(pos, color) {
   drawLayer.fill(pos.color)
-  drawLayer.ellipse(pos.x - w/2 - baseSize/2, pos.y - h/2 - baseSize/2, pos.avgDist * baseMult + baseSize)
+  let posElX = pos.x - w/2 - baseSize/2
+  let posElY = pos.y - h/2 - baseSize/2
+  drawLayer.ellipse(posElX, posElY, pos.avgDist * baseMult + baseSize)
+  for(let i=0; i<50; i++){
+    let varX = random(-10, 10) * pos.avgDist/5
+    let varY = random(-10, 10) * pos.avgDist/5
+    drawLayer.ellipse(posElX + varX, posElY + varY, random(baseSize*4))
+  }
 }
 
 function updateMod(pos) {
