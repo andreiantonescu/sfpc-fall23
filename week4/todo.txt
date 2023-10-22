@@ -1,2 +1,3 @@
-- playback at the same time
-- DONE: draw with fade for both initial and rewind
+- have a focal point
+- have something in the sound controlled by the focal point
+- have focal point randomly change

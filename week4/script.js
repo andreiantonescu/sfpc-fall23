@@ -4,12 +4,7 @@ let PD = 1
 let context, fmDevice
 let gain, note, velocity, attackNote, decayNote, sustainNote, releaseNote, modRatio, modBright, attackMod, decayMod, sustainMod, releaseMod
 
-var dispX1 = 69, dispX1Min = 0, dispX1Max = 150
-var dispY1 = 72, dispY1Min = 0, dispY1Max = 150
-var dispX2 = 68, dispX2Min = 0, dispX2Max = 150
-var dispY2 = 61, dispY2Min = 0, dispY2Max = 150
-var factorX = 9.271, factorXMin = 0.001, factorXMax = 100.0, factorXStep = 0.01
-var factorY = 25, factorYMin = 0.001, factorYMax = 100.0, factorYStep = 0.01
+let focalX, focalY
 
 var prevX, prevY, dAvg = 0, avgIter = 0
 var histories = {}
@@ -94,12 +89,17 @@ function setup() {
   pixelDensity(1)
   PD = 1
 
+  focalX = random(0.25, 0.75)
+  focalY = random(0.25, 0.75)
+
   gslsFunctions =  
   `
-  vec2 sineWave(vec2 p, float dispX1, float dispY1, float dispX2, float dispY2 ,float constX, float constY, float factorX, float factorY, float time) {
-      float x = sin(dispX1 * p.x + dispX2 * p.y + constX + time) * factorX;
-      float y = sin(dispY1 * p.y + dispY2 * p.x + constY + time) * factorY;
-      return vec2(p.x + x, p.y + y);
+  #define CL(T) clamp(T, 0.0, 1.0)
+  vec3 lv(vec3 c, float i, float g, float a) {
+    return pow(min(max(c-vec3(i), vec3(0.0)) / (vec3(a) - vec3(i)), vec3(1.0)), vec3(1.0/g));
+  }
+  float lv(float c, float i, float g, float a) {
+    return(lv(vec3(c), i, g, a).r);
   }
   `
   use = `precision highp float; varying vec2 vPos;`
@@ -158,16 +158,18 @@ function setup() {
   `
   uniform vec2 r;
   uniform sampler2D img;
-  uniform float pr, dispX1, dispY1, dispX2, dispY2, constX, constY, factorX, factorY, time, mouseX, mouseY;
+  uniform float pr, fx, fy, dispX1, dispY1, dispX2, dispY2, constX, constY, factorX, factorY, time, mouseX, mouseY;
   uniform bool isBloom;
+  
 
   void main() {
       vec2 uv = (gl_FragCoord.xy/r.xy)/pr;
       uv.y = 1.0 - uv.y;
 
-      // float d = distance(uv, vec2(mouseX, mouseY));
-      // gl_FragColor = texture2D(img, sineWave(uv, dispX1, dispY1, dispX2, dispY2, constX, constY, factorX/d, factorY/d, time));
-    // gl_FragColor = texture2D(img, uv);
+    vec2 fPoint = vec2(fx, fy);
+    float dToFPoint = distance(uv, fPoint);
+    float testV = lv(dToFPoint, 0.0, 0.85, 0.9);
+    float brMask = CL(testV);
 
     const float Directions = 32.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
     const float Quality = 16.0; // BLUR QUALITY (Default 4.0 - More is better but slower)
@@ -178,10 +180,9 @@ function setup() {
 
     const float Pi = 6.28318530718;
 
-
     for(float d=0.0; d<6.28318530718; d+=Pi/Directions) {
         for(float i=1.0/Quality; i<=1.0; i+=1.0/Quality) {
-            Color += texture2D(img, uv+vec2(cos(d),sin(d))*Radius*i * (2.0 + 0.025));		
+            Color += texture2D(img, uv+vec2(cos(d),sin(d))*Radius*i * (brMask*4.0 + 0.025));		
         }
     }
 
@@ -193,31 +194,17 @@ function setup() {
   `
   
   drawLayer = createGraphics(w, h, WEBGL)
-  fadeLayer = createGraphics(w, h, WEBGL)
 
   blurLayer = createGraphics(w, h, WEBGL)
   blur = blurLayer.createShader(vs, blur_FS)
 
-  bloomLayer = createGraphics(w, h, WEBGL)
-  bloom = bloomLayer.createShader(vs, bloom_FS)
-
-  blurLayer2 = createGraphics(w, h, WEBGL)
-  blur2 = blurLayer2.createShader(vs, blur_FS)
-
-  finalLayer = createGraphics(w, h, WEBGL)
-  blends = finalLayer.createShader(vs, additiveBlend_FS)
-
-  // UI Debug Stuff
-  // var gui = createGui('September')
-  // gui.addGlobals('dispX1', 'dispY1', 'dispX2', 'dispY  2', 'factorX', 'factorY')
-
   drawLayer.noStroke()
   drawLayer.clear()
-  // drawLayer.background(15, 15, 15)
 
   rnboSetup()
   backgroundColor = getRandomRGBA(colors.mono, 255)
   drawLayer.background(backgroundColor)
+  
 }
 
 let playbackQueue = []
@@ -268,41 +255,11 @@ function draw() {
   blur.setUniform("iResolution", [w, h])
   blur.setUniform("img", drawLayer)
   blur.setUniform("time", frameCount/10)
-  blur.setUniform("dispX1", dispX1)
-  blur.setUniform("dispY1", dispY1)
-  blur.setUniform("dispX2", dispX2)
-  blur.setUniform("dispY2", dispY2)
-  blur.setUniform("factorX", map(mouseY, 0, h, 0, 50))
-  blur.setUniform("factorY", map(mouseY, 0, h, 0, 50))
-  blur.setUniform("mouseX", -w/2)
-  blur.setUniform("mouseY", -h/2)
+  blur.setUniform("fx", focalX)
+  blur.setUniform("fy", focalY)
   blurLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
 
-  // bloomLayer.shader(bloom)
-  // bloom.setUniform("r", [w, h])
-  // bloom.setUniform("pr", PD)
-  // bloom.setUniform("iResolution", [w, h])
-  // bloom.setUniform("img", blurLayer)
-  // bloomLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
-
-  // blurLayer2.shader(blur2)
-  // blur2.setUniform("r", [w, h])
-  // blur2.setUniform("pr", PD)
-  // blur2.setUniform("iResolution", [w, h])
-  // blur2.setUniform("img", bloomLayer)
-  // blur2.setUniform("isBloom", true)
-  // blurLayer2.quad(-1, -1, 1, -1, 1, 1, -1, 1)
-
-  // finalLayer.shader(blends)
-  // blends.setUniform("r", [w, h])
-  // blends.setUniform("pr", PD)
-  // blends.setUniform("iResolution", [w, h])
-  // blends.setUniform("img1", blurLayer)
-  // blends.setUniform("img2", bloomLayer)
-  // finalLayer.quad(-1, -1, 1, -1, 1, 1, -1, 1)
-
   image(blurLayer, -w/2, -h/2)
-  // console.log(floor(frameRate()))
 }
 
 function resumeAudio() {
