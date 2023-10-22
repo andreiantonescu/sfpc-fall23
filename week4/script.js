@@ -217,8 +217,9 @@ function draw() {
   for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
     let touchID = touch.id
+    if(!colorsPerTouch[touchID]) { colorsPerTouch[touchID] = getRandomRGBA(colors.mono, 75)}
     touchIDInPlayback[touch.id] = false
-    updateAndDraw(touch.x, touch.y, touchID)
+    updateAndDraw(touch.x, touch.y, touchID, colorsPerTouch[touchID])
   }
 
   for (let id in histories) {
